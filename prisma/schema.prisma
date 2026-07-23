@@ -1,0 +1,97 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ORGANIZER
+  PARTICIPANT
+}
+
+enum QuestionType {
+  SINGLE
+  MULTIPLE
+  TEXT
+  IMAGE
+}
+
+enum RoomStatus {
+  WAITING
+  ACTIVE
+  FINISHED
+}
+
+model User {
+  id           String        @id @default(cuid())
+  name         String
+  email        String        @unique
+  password     String
+  role         Role          @default(PARTICIPANT)
+  quizzes      Quiz[]
+  participants Participant[]
+}
+
+model Quiz {
+  id          String     @id @default(cuid())
+  title       String
+  description String?
+  category    String?
+  creatorId   String
+  creator     User       @relation(fields: [creatorId], references: [id])
+  questions   Question[]
+  rooms       Room[]
+  createdAt   DateTime   @default(now())
+}
+
+model Question {
+  id             String       @id @default(cuid())
+  quizId         String
+  quiz           Quiz         @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  type           QuestionType @default(SINGLE)
+  text           String
+  imageUrl       String?
+  options        Json
+  correctAnswer  Json
+  timeLimit      Int          @default(15)
+  order          Int          @default(0)
+  answers        Answer[]
+}
+
+model Room {
+  id                   String       @id @default(cuid())
+  quizId               String
+  quiz                 Quiz         @relation(fields: [quizId], references: [id])
+  code                 String       @unique
+  status               RoomStatus   @default(WAITING)
+  currentQuestionIndex Int          @default(0)
+  participants         Participant[]
+  createdAt            DateTime     @default(now())
+}
+
+model Participant {
+  id        String    @id @default(cuid())
+  roomId    String
+  room      Room      @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?     @relation(fields: [userId], references: [id])
+  nickname  String
+  score     Int       @default(0)
+  answers   Answer[]
+}
+
+model Answer {
+  id             String      @id @default(cuid())
+  participantId  String
+  participant    Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  questionId     String
+  question       Question    @relation(fields: [questionId], references: [id])
+  givenAnswer    Json
+  isCorrect      Boolean
+  points         Int         @default(0)
+  timeTaken      Int
+  createdAt      DateTime    @default(now())
+}
